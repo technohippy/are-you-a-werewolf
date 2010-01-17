@@ -1,0 +1,16 @@
+application: are-you-a-werewolf
+version: 1
+runtime: python
+api_version: 1
+
+handlers:
+- url: /_wave/.*
+  script: are-you-a-werewolf.py
+- url: /js
+  static_dir: js
+- url: /images
+  static_dir: images
+- url: /gadgets
+  static_dir: gadgets
+- url: .*
+  script: main.py

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Module>
+  <ModulePrefs title="Participants of 'Are You a Werewolf?'">
+    <Require feature="wave" /> 
+    <Require feature="dynamic-height" /> 
+  </ModulePrefs>
+  <Content type="html">
+    <![CDATA[     
+    <script>
+    var DEFAULT_NUMBER = 2;
+    var DEFAULT_TERM = 5;
+    var DEFAULT_NAME = '';
+
+    function gameStarted() {
+      var state = wave.getState();
+      return state && state.get('started');
+    }
+
+    function allowJoin(participants) {
+      var state = wave.getState();
+      if (!state) return false;
+      if (gameStarted()) return false;
+
+      var viewer = wave.getViewer();
+      for (var i = 0; i < participants.length; i++) {
+        if (viewer.getId() == participants[i].getId()) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function join() {
+      var state = wave.getState();
+      var viewer = wave.getViewer();
+      state.submitValue('participant.' + viewer.getId(), viewer.getId());
+      updateConsole();
+    }
+
+    function getParticipants() {
+      var state = wave.getState();
+      if (state) {
+        var participants = [];
+        var keys = state.getKeys();
+        for (var i = 0; i < keys.length; i++) {
+          var key = keys[i];
+          if (key.match(/participant\./)) {
+            participants.push(wave.getParticipantById(state.get(key)));
+          }
+        }
+        return participants;
+      }
+      else {
+        return [];
+      }
+    }
+
+    function getSettings() {
+      var state = wave.getState();
+      if (state) {
+        return {
+          number: state.get('settings-number', DEFAULT_NUMBER),
+          term: state.get('settings-term', DEFAULT_TERM)
+        };
+      }
+      else {
+        return {number:DEFAULT_NUMBER, term:DEFAULT_TERM};
+      }
+    }
+
+    function allowChangeSettings() {
+      return wave.getMode() == wave.Mode.EDIT && wave.getHost() == wave.getViewer() && !gemeStarted();
+    }
+
+    function changeNumber(elm) {
+      var state = wave.getState();
+      if (state) {
+        state.submitValue('settings-number', elm.value);
+      }
+    }
+
+    function changeTerm(elm) {
+      var state = wave.getState();
+      if (state) {
+        state.submitValue('settings-term', elm.value);
+      }
+    }
+
+    function isRobot(participant) {
+      return participant.getDisplayName().match(/@appspot\.com/);
+    }
+
+    function updateConsole() {
+      var state = wave.getState();
+      if (!state) return;
+      var settings = getSettings();
+      var participants = getParticipants();
+      if (settings.number <= participants.length && !state.get('started')) {
+        state.submitValue('started', 'started');
+      }
+      var html = '';
+      if (allowJoin(participants)) {
+        html += '<button onclick="join()">Join The Game</button><br />';
+      }
+      else if (state.get('started')) {
+        html += 'started<br />';
+      }
+      html += '<h2>Game Settings</h2>';
+      if (allowChangeSettings()) {
+        html += 'The number of members: <input onchange="changeNumber(this)"' +
+          'size="4" value="' + settings.number + '" /><br />';
+        html += 'Term: <input onchange="changeTerm(this)"' +
+          'size="4" value="' + settings.term + '" />[min]<br />';
+      }
+      else {
+        html += 'The number of members: ' + settings.number + '<br />';
+        html += 'Term: ' + settings.term + '[min]<br />';
+      }
+      html += '<h2>Characters</h2>';
+      html += '<ol>';
+      for (var i = 0; i < participants.length; i++) {
+        var participant = participants[i];
+        if (participant && !isRobot(participant)) {
+          html += '<li><img src="' + participant.getThumbnailUrl() + 
+            '" width="20" />' + participant.getDisplayName() + '</li>';
+        }
+      }
+      html += '</ol>';
+      document.getElementById('container').innerHTML = html;
+      gadgets.window.adjustHeight();
+    }
+
+    function init() {
+      if (wave && wave.isInWaveContainer()) {
+        wave.setStateCallback(updateConsole);
+        //wave.setParticipantCallback(updateConsole);
+        wave.setModeCallback(updateConsole);
+      }
+    }
+
+    gadgets.util.registerOnLoadHandler(init);
+    </script>
+    <div id="container"></div>
+    ]]>
+  </Content>
+</Module>
