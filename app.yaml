@@ -10,7 +10,5 @@ handlers:
   static_dir: js
 - url: /images
   static_dir: images
-- url: /gadgets
-  static_dir: gadgets
 - url: .*
   script: main.py
