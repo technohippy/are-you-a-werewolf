@@ -12,6 +12,7 @@ class Game(db.Model):
   hunter_wave_id = db.StringProperty()
 
 class Participant(db.Model):
+  game_wave_id = db.StringProperty()
   personal_wave_id = db.StringProperty()
   participant_id = db.StringProperty()
   role = db.StringProperty(default='villager')

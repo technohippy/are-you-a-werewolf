@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Module>
+  <ModulePrefs title="Ping to 'Are You a Werewolf?'" height="1">
+    <Require feature="wave" /> 
+  </ModulePrefs>
+  <Content type="html">
+    <![CDATA[     
+    <script>
+    function ping() {
+      var state = wave.getState();
+      if (state && !state.get('parent_wave_id')) {
+        state.submitDelta({
+          'role':'{{ role }}', 
+          'parent_wave_id':'{{ wave_id }}'
+        });
+      }
+    }
+
+    gadgets.util.registerOnLoadHandler(function() {
+      if (wave && wave.isInWaveContainer()) {
+        wave.setStateCallback(ping);
+      }
+    });
+    </script>
+    ]]>
+  </Content>
+</Module>
