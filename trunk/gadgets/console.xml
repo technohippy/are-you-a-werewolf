@@ -10,6 +10,12 @@
     var DEFAULT_NUMBER = 2;
     var DEFAULT_TERM = 5;
     var DEFAULT_NAME = '';
+    var FIRST_STAGE = 'night';
+    var STAGES = {
+      'day':'twilight',
+      'twilight':'night',
+      'night':'day'
+    };
 
     function gameStarted() {
       var state = wave.getState();
@@ -93,17 +99,22 @@
     function updateConsole() {
       var state = wave.getState();
       if (!state) return;
+      if (!timer) checkTimer();
       var settings = getSettings();
       var participants = getParticipants();
       if (settings.number <= participants.length && !state.get('started')) {
         state.submitValue('started', 'started');
+        setTimer(state);
       }
       var html = '';
       if (allowJoin(participants)) {
         html += '<button onclick="join()">Join The Game</button><br />';
       }
       else if (state.get('started')) {
-        html += 'started<br />';
+        if (state.get('limit')) {
+          html += 'Stage:' + state.get('stage') + '<br />';
+          html += 'Until:' + state.get('limit') + '<br />';
+        }
       }
       html += '<h2>Game Settings</h2>';
       if (allowChangeSettings()) {
@@ -128,6 +139,36 @@
       html += '</ol>';
       document.getElementById('container').innerHTML = html;
       gadgets.window.adjustHeight();
+    }
+
+    function setTimer(state) {
+      var current_stage = state.get('stage', FIRST_STAGE);
+      var next_stage = STAGES[current_stage];
+      var term = parseInt(state.get('settings-term', DEFAULT_TERM)) * 60  * 1000;
+      var now = new Date().getTime();
+      var nextLimit = now + term;
+      var limit = new Date();
+      limit.setTime(nextLimit);
+      state.submitDelta({
+        'limit_ms': '' + nextLimit,
+        'limit': '' + limit,
+        'stage': next_stage
+      });
+    }
+
+    var timer = null;
+
+    function checkTimer() {
+      if (!wave || !wave.isInWaveContainer()) return;
+      var state = wave.getState();
+      if (state) {
+        var limit = parseInt(state.get('limit_ms', '9999999999999'));
+        var now = new Date().getTime();
+        if (limit < now) {
+          setTimer(state);
+        }
+      }
+      timer = setTimeout(checkTimer, 60 * 1000);
     }
 
     function init() {
