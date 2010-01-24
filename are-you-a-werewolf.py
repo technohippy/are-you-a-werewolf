@@ -88,25 +88,16 @@ def HandleConsoleGadget(context, blip, doc, gadget):
 
 def HandlePingGadget(context, blip, doc, gadget):
   parent_wave_id = gadget.get('parent_wave_id')
-  if parent_wave_id:
-    logging.info('HandlePingGadget parent_wave_id:' + parent_wave_id)
-  else:
-    logging.info('parent_wave_id IS NUUUUUUUUUUUUULLLLLLL')
   games = Game.gql('WHERE wave_id = :1', parent_wave_id)
-  logging.info('>>>>>>>> HandlePingGadget:count = ' + str(games.count()))
   if games.count() != 0:
     game = games[0]
     wave_id = blip.GetWaveId()
     role = gadget.get('role')
-    logging.info('>>>>>>>>>>> HandlePingGadget role:' + role)
     if role == 'wolf':
-      logging.info('>>>>>>>>>>> HandlePingGadget role wolf')
       game.wolves_wave_id = wave_id
     elif role == 'fortuneteller':
-      logging.info('>>>>>>>>>>> HandlePingGadget role teller')
       game.fortuneteller_wave_id = wave_id
     elif role == 'hunter':
-      logging.info('>>>>>>>>>>> HandlePingGadget role hunter')
       game.hunter_wave_id = wave_id
     game.put()
 
@@ -126,7 +117,6 @@ def GetGadgetByBaseUrl(blip, url):
 
 def OnBlipSubmitted(properties, context):
   blip_id = properties['blipId']
-  logging.info('>>>>>>>>>>>>> blip_id:' + blip_id)
   blip = context.GetBlipById(blip_id)
   doc = blip.GetDocument()
 
