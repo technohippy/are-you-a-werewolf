@@ -10,11 +10,16 @@ class Game(db.Model):
   wolves_wave_id = db.StringProperty()
   fortuneteller_wave_id = db.StringProperty()
   hunter_wave_id = db.StringProperty()
+  stage = db.StringProperty()
 
 class Participant(db.Model):
   game_wave_id = db.StringProperty()
   personal_wave_id = db.StringProperty()
   participant_id = db.StringProperty()
   role = db.StringProperty(default='villager')
+
   alive = db.BooleanProperty(default=True)
+  guarded = db.BooleanProperty(default=False)
+  target = db.BooleanProperty(default=False)
+
 

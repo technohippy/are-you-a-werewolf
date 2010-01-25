@@ -58,33 +58,69 @@ def AddRootText(context, text):
 def AddText(wavelet, text):
   wavelet.CreateBlip().GetDocument().SetText(text)
 
-def HandleConsoleGadget(context, blip, doc, gadget):
-  started = gadget.get('started')
-  if started:
-    wave_id = blip.GetWaveId()
-    games = Game.gql("WHERE wave_id = :1 LIMIT 1", wave_id)
-    if games.count() == 0:
-      wolves_wave = NewWave(context)
-      wolves_wave.SetTitle('You are wolves.')
-      fortuneteller_wave = NewWave(context)
-      fortuneteller_wave.SetTitle('You are a fortuneteller.')
-      hunter_wave = NewWave(context)
-      hunter_wave.SetTitle('You are a hunter.')
-      game = Game(wave_id=wave_id) 
-      game.put()
+def CheckExecutionPolling(game, gadget, doc):
+  points = {}
+  for key, pollee in gadget.items():
+    if key.startswith('execution.'):
+      doc.GadgetSubmitDelta(gadget, {key:None})
+      if points[pollee]:
+        points[pollee] += 1
+      else:
+        points[pollee] = 0
+  max = 0
+  result = []
+  for pollee, point in points:
+    if max == point:
+      result.push(pollee)
+    elif max < point:
+      max = point
+      result = [pollee]
+  return random.choice(result)
 
-      participant_ids = []
-      for attr in dir(gadget):
-        if attr.startswith('participant.'):
-          participant_id = attr.split('.', 1)[-1]
-          participant_ids.append(participant_id)
-      roles = GetRoles(len(participant_ids))
-      random.shuffle(participant_ids)
-      for participant_id in participant_ids:
-        role = roles.pop(0)
-        SendWave(participant_id, role, context, wave_id, hunter_wave, fortuneteller_wave, wolves_wave)
-        participant = Participant(parent=game, game_wave_id=wave_id, participant_id=participant_id, role=role)
-        participant.put()
+def HandleConsoleGadget(context, blip, doc, gadget):
+  if not gadget.get('started'): 
+    return
+
+  wave_id = blip.GetWaveId()
+  games = Game.gql("WHERE wave_id = :1 LIMIT 1", wave_id)
+  if games.count() == 0:
+    wolves_wave = NewWave(context)
+    wolves_wave.SetTitle('You are wolves.')
+    fortuneteller_wave = NewWave(context)
+    fortuneteller_wave.SetTitle('You are a fortuneteller.')
+    hunter_wave = NewWave(context)
+    hunter_wave.SetTitle('You are a hunter.')
+    game = Game(wave_id=wave_id) 
+    game.put()
+
+    participant_ids = []
+    for attr in dir(gadget):
+      if attr.startswith('participant.'):
+        participant_id = attr.split('.', 1)[-1]
+        participant_ids.append(participant_id)
+    roles = GetRoles(len(participant_ids))
+    random.shuffle(participant_ids)
+    for participant_id in participant_ids:
+      role = roles.pop(0)
+      SendWave(participant_id, role, context, wave_id, hunter_wave, fortuneteller_wave, wolves_wave)
+      participant = Participant(parent=game, game_wave_id=wave_id, participant_id=participant_id, role=role)
+      participant.put()
+
+  game = games[0]
+  if gadget.get('stage_changed'):
+    doc.GadgetSubmitDelta(gadget, {'stage_changed':None})
+    stage = gadget.get('stage')
+    if stage == 'day':
+      # check and show night result
+      pass
+    elif stage == 'twilight':
+      AddText(context.GetRootWavelet(), 'Start polling for execution')
+    elif stage == 'night':
+      target = CheckExecutionPolling(game, gadget, doc)
+      doc.GadgetSubmitDelta(gadget, {'participant.' + target: 'dead'})
+      # check and show twilight result
+    game.stage = stage
+    game.put()
 
 def HandlePingGadget(context, blip, doc, gadget):
   parent_wave_id = gadget.get('parent_wave_id')
@@ -130,9 +166,9 @@ def OnBlipSubmitted(properties, context):
 
 
 if __name__ == '__main__':
-  bot = robot.Robot('are-you-a-werewolf', 
-    version='0', 
-    image_url='http://are-you-a-werewolf.appspot.com/images/profile.png', 
+  bot = robot.Robot('Are you a werewolf?', 
+    version='1', 
+    image_url='http://are-you-a-werewolf.appspot.com/images/profile_medium.png', 
     profile_url='http://are-you-a-werewolf.appspot.com')
   bot.RegisterHandler(events.WAVELET_SELF_ADDED, AddConsoleGadget)
   bot.RegisterHandler(events.BLIP_SUBMITTED, OnBlipSubmitted)
