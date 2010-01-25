@@ -8,7 +8,8 @@
     <![CDATA[     
     <script>
     var DEFAULT_NUMBER = 2;
-    var DEFAULT_TERM = 5;
+    //var DEFAULT_TERM = 5;
+    var DEFAULT_TERM = 1;
     var DEFAULT_NAME = '';
     var FIRST_STAGE = 'night';
     var STAGES = {
@@ -39,19 +40,21 @@
     function join() {
       var state = wave.getState();
       var viewer = wave.getViewer();
-      state.submitValue('participant.' + viewer.getId(), viewer.getId());
+      state.submitValue('participant.' + viewer.getId(), 'alive');
       updateConsole();
     }
 
-    function getParticipants() {
+    function getParticipants(condition) {
       var state = wave.getState();
       if (state) {
+        if (!condition) condition = function(key) {return true}
         var participants = [];
         var keys = state.getKeys();
         for (var i = 0; i < keys.length; i++) {
           var key = keys[i];
-          if (key.match(/participant\./)) {
-            participants.push(wave.getParticipantById(state.get(key)));
+          if (key.match(/participant\./) && condition(key)) {
+            var participantId = key.replace('participant.', '');
+            participants.push(wave.getParticipantById(participantId));
           }
         }
         return participants;
@@ -59,6 +62,12 @@
       else {
         return [];
       }
+    }
+
+    function getAliveParticipants() {
+      return getParticipants(function(key) {
+        return wave.getState().get(key) == 'alive';
+      });
     }
 
     function getSettings() {
@@ -132,8 +141,11 @@
       for (var i = 0; i < participants.length; i++) {
         var participant = participants[i];
         if (participant && !isRobot(participant)) {
+          var dead = state.get('participant.' + participant.getId()) != 'alive'
           html += '<li><img src="' + participant.getThumbnailUrl() + 
-            '" width="20" />' + participant.getDisplayName() + '</li>';
+            '" width="20" />' + (dead ? '<s>' : '') + 
+            participant.getDisplayName() + (dead ? '</s>' : '') + 
+            '</li>';
         }
       }
       html += '</ol>';
@@ -152,8 +164,52 @@
       state.submitDelta({
         'limit_ms': '' + nextLimit,
         'limit': '' + limit,
-        'stage': next_stage
+        'stage': next_stage,
+        'stage_changed': 'changed' 
       });
+      var box = document.getElementById('ballot-box');
+      if (next_stage == 'twilight') {
+        var pars = getAliveParticipants();
+        var html = '<h2>Who will be executed?</h2>';
+        html += '<ol id="vote">';
+        for (var i = 0; i < pars.length; i++) {
+          var par = pars[i];
+          html += '<li id="vote-' + par.getId() + '" onclick="vote(\'' + 
+            par.getId() + '\')"><img src="' + par.getThumbnailUrl() + 
+            '" width="20" />' + par.getDisplayName() + '</li>';
+        }
+        html += '</ol>';
+        box.innerHTML = html;
+        box.style.display = 'block';
+      }
+      else {
+        box.innerHTML = '';
+        box.style.display = 'none';
+      }
+    }
+
+    function allowVote(viewer) {
+      var participants = getAliveParticipants();
+      for (var i = 0; i < participants.length; i++) {
+        if (viewer.getId() == participants[i].getId()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function vote(parid) {
+      var viewer = wave.getViewer();
+      if (!allowVote(viewer)) return;
+      var state = wave.getState();
+      state.submitValue('execution.' + viewer.getId(), parid);
+      var voteElm = document.getElementById('vote');
+      for (var i = 0; i < voteElm.childNodes.length; i++) {
+        if (voteElm.childNodes[i].tagName == 'li') {
+          voteElm.childNodes[i].style.backgroundColor = '';
+        }
+      }
+      document.getElementById('vote-' + parid).style.backgroundColor = '#FF0';
     }
 
     var timer = null;
@@ -182,6 +238,7 @@
     gadgets.util.registerOnLoadHandler(init);
     </script>
     <div id="container"></div>
+    <div id="ballot-box" style="display:none"></div>
     ]]>
   </Content>
 </Module>
